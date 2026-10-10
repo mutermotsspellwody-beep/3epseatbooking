@@ -1,0 +1,226 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3EP Seat Booking | Admin</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 1000px;
+      margin: 30px auto;
+      padding: 16px;
+      background: #f5f7fb;
+      color: #172033;
+    }
+    .card {
+      background: white;
+      padding: 22px;
+      border-radius: 14px;
+      margin-bottom: 18px;
+      box-shadow: 0 2px 12px #0000000d;
+    }
+    input, button {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 8px;
+      font: inherit;
+    }
+    input { border: 1px solid #ccd2dc; }
+    button {
+      border: 0;
+      background: #173f8a;
+      color: white;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .5; }
+    #logout { background: #555; }
+    #status { white-space: pre-wrap; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; background: white; }
+    th, td {
+      padding: 11px;
+      border-bottom: 1px solid #e4e7ee;
+      text-align: left;
+      white-space: nowrap;
+    }
+    th { background: #edf1f8; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <h1>3EP Seat Booking</h1>
+  <p>ระบบผู้ดูแลการจองที่นั่ง</p>
+
+  <section id="loginPanel" class="card">
+    <h2>เข้าสู่ระบบ Admin</h2>
+    <form id="loginForm">
+      <label for="email">อีเมลผู้ดูแล</label>
+      <input id="email" type="email" required autocomplete="username">
+
+      <label for="password">รหัสผ่าน</label>
+      <input id="password" type="password" required
+        autocomplete="current-password">
+
+      <button id="loginButton" type="submit">เข้าสู่ระบบ</button>
+    </form>
+  </section>
+
+  <section id="dashboard" class="card" hidden>
+    <h2>รายการจองทั้งหมด</h2>
+    <p id="adminEmail"></p>
+    <button id="refreshButton" type="button">รีเฟรชรายการ</button>
+    <button id="logout" type="button">ออกจากระบบ</button>
+
+    <p id="status" role="status"></p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>หมายเลขที่นั่ง</th>
+            <th>อีเมลผู้จอง</th>
+            <th>เวลาจอง</th>
+          </tr>
+        </thead>
+        <tbody id="bookingRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <script>
+    // แก้เฉพาะ 2 ค่านี้ให้เป็นข้อมูลจาก Supabase โปรเจกต์เดิม
+    const SUPABASE_URL = "https://tkbfeshkktfhrimqwubk.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY =
+      "sb_publishable_dkf8NON9ZmvVx44G_yTfNA_sUo71lLT";
+
+    const client = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY
+    );
+
+    const loginPanel = document.getElementById("loginPanel");
+    const dashboard = document.getElementById("dashboard");
+    const statusEl = document.getElementById("status");
+    const rowsEl = document.getElementById("bookingRows");
+
+    function showMessage(message) {
+      statusEl.textContent = message;
+    }
+
+    function showLoggedIn(isLoggedIn) {
+      loginPanel.hidden = isLoggedIn;
+      dashboard.hidden = !isLoggedIn;
+    }
+
+    async function loadBookings() {
+      showMessage("กำลังโหลดรายการจอง...");
+      rowsEl.replaceChildren();
+
+      const { data, error } =
+        await client.rpc("ep_admin_list_bookings");
+
+      if (error) {
+        showMessage("โหลดรายการไม่สำเร็จ: " + error.message);
+        return;
+      }
+
+      if (!Array.isArray(data) || data.length === 0) {
+        showMessage("ยังไม่มีรายการจอง");
+        return;
+      }
+
+      for (const booking of data) {
+        const tr = document.createElement("tr");
+
+        for (const value of [
+          booking.seat_number,
+          booking.email,
+          booking.created_at
+            ? new Date(booking.created_at).toLocaleString("th-TH")
+            : "-"
+        ]) {
+          const td = document.createElement("td");
+          td.textContent = value == null ? "-" : String(value);
+          tr.appendChild(td);
+        }
+
+        rowsEl.appendChild(tr);
+      }
+
+      showMessage("โหลดข้อมูลแล้ว " + data.length + " รายการ");
+    }
+
+    async function checkSession() {
+      const { data, error } = await client.auth.getSession();
+
+      if (error) {
+        showMessage(error.message);
+        return;
+      }
+
+      const session = data.session;
+
+      if (!session) {
+        showLoggedIn(false);
+        return;
+      }
+
+      showLoggedIn(true);
+      document.getElementById("adminEmail").textContent =
+        "บัญชี: " + (session.user.email || "");
+      await loadBookings();
+    }
+
+    document.getElementById("loginForm")
+      .addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const button = document.getElementById("loginButton");
+        button.disabled = true;
+        showMessage("กำลังตรวจสอบบัญชี...");
+
+        try {
+          const email = document.getElementById("email").value.trim();
+          const password = document.getElementById("password").value;
+
+          const { error } = await client.auth.signInWithPassword({
+            email,
+            password
+          });
+
+          if (error) {
+            showMessage("เข้าสู่ระบบไม่สำเร็จ: " + error.message);
+            return;
+          }
+
+          await checkSession();
+        } finally {
+          button.disabled = false;
+        }
+      });
+
+    document.getElementById("refreshButton")
+      .addEventListener("click", loadBookings);
+
+    document.getElementById("logout")
+      .addEventListener("click", async () => {
+        const { error } = await client.auth.signOut();
+
+        if (error) {
+          showMessage("ออกจากระบบไม่สำเร็จ: " + error.message);
+          return;
+        }
+
+        rowsEl.replaceChildren();
+        showLoggedIn(false);
+        showMessage("");
+      });
+
+    checkSession();
+  </script>
+</body>
+</html>
