@@ -32,4 +32,16 @@ function renderAdmin(){document.getElementById('adminLogin').classList.toggle('h
 document.getElementById('adminEnter').onclick=()=>{if(document.getElementById('adminPin').value!=='1234'){toast('รหัสผู้ดูแลไม่ถูกต้อง');return}isAdmin=true;renderAdmin();toast('เข้าสู่หน้าผู้ดูแลในโหมดต้นแบบ')};document.getElementById('saveSession').onclick=()=>{const start=document.getElementById('startAt').value,end=document.getElementById('endAt').value;if(start&&end&&new Date(start)>=new Date(end)){toast('เวลาปิดจองต้องอยู่หลังเวลาเปิดจอง');return}db.session={name:document.getElementById('sessionName').value.trim()||'รอบการจอง',state:document.getElementById('sessionState').value,start,end};save();toast('บันทึกการตั้งค่ารอบจองแล้ว')};document.getElementById('exportCsv').onclick=()=>{const rows=[['Seat','Name','Booked At','Status'],...db.bookings.sort((a,b)=>a.seat-b.seat).map(b=>['No.'+b.seat,b.name,new Date(b.time).toLocaleString('th-TH'),'Booked'])];const csv='\ufeff'+rows.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));const a=document.createElement('a');a.href=url;a.download='3ep-bookings.csv';a.click();URL.revokeObjectURL(url)};document.getElementById('resetDemo').onclick=()=>{if(confirm('ล้างบัญชีและข้อมูลการจองทั้งหมดในเครื่องนี้หรือไม่?')){db=initial();currentUser=null;selectedSeat=null;isAdmin=false;save();showPage('home');toast('ล้างข้อมูลต้นแบบแล้ว')}};
 function renderAll(){document.getElementById('headerStatus').textContent=currentUser?'เข้าสู่ระบบ: '+fullName(currentUser):'● ระบบต้นแบบ';document.getElementById('sessionInfo').textContent=`${db.session.name||'รอบการจอง'} · ${sessionText()}`;renderSeats();renderDashboard();renderAdmin();if(currentUser)document.getElementById('logoutBtn').classList.remove('hidden')}
 updateAuthMode();renderAll();
-</script></body></html>
+</script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+  const SUPABASE_URL = https: '//tkbfeshkktfhrimqwubk.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_dkf8NON9ZmvVx44G_yTfNA_sUo71lLT';
+
+  const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+  );
+
+  console.log('Supabase client initialized');
+</script>/body></html>
