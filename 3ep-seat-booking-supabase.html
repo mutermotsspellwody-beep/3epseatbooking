@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3/EP · Seat Booking</title>
+<style>
+:root{--gold:#f4c542;--ink:#303741;--muted:#687385;--line:#e4e8ee;--bg:#f5f7fa;--green:#dcf7e7;--blue:#8798b3;--red:#fee2e2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1050px;margin:auto;padding:20px}.hero{background:var(--ink);color:white;padding:24px;border-radius:20px;display:flex;align-items:center;justify-content:space-between;gap:16px}.hero h1{margin:5px 0;font-size:clamp(22px,4vw,32px)}.hero p{margin:0;color:#d4dae3}.eyebrow{font-size:12px;letter-spacing:1.2px;color:var(--gold);font-weight:800}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}button{font:inherit;font-weight:700;border:0;border-radius:11px;padding:11px 15px;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--gold);color:#292d32}.secondary{background:#edf0f4;color:var(--ink)}.danger{background:var(--red);color:#991b1b}.panel{background:white;border:1px solid var(--line);border-radius:17px;padding:20px;margin-bottom:16px;box-shadow:0 4px 16px #17203308}.narrow{max-width:530px;margin:22px auto}.field{display:grid;gap:6px;margin:13px 0}.field label{font-size:14px;font-weight:700}.field input{font:inherit;padding:12px;border:1px solid #ccd3dd;border-radius:10px;width:100%}.muted{color:var(--muted)}.row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}.stat{border-radius:13px;padding:13px;background:#f1f3f7}.stat strong{display:block;font-size:27px}.stat.free{background:var(--green);color:#176b3b}.stat.booked{background:#e4e9f1;color:#35445c}.seats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin-top:16px}.seat{min-height:72px;border:1px solid #b7e9c8;background:var(--green);color:#176b3b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 4px}.seat small{font-size:11px;font-weight:500}.seat.selected{background:var(--gold);border-color:#d3a400;color:#453500}.seat.booked{background:var(--blue);border-color:#71839d;color:white}.notice{padding:12px 14px;border-radius:11px;background:#f0f3f7;font-size:13px;margin-top:12px}.notice.warn{background:#fff2c9;color:#775800}.notice.error{background:var(--red);color:#991b1b}.notice.success{background:var(--green);color:#176b3b}.hidden{display:none!important}.tag{font-size:12px;padding:6px 10px;border-radius:99px;background:#e8edf4}.footer{text-align:center;color:#8b93a0;font-size:12px;padding:20px}@media(max-width:600px){main{padding:12px}.hero{padding:18px}.panel{padding:15px}.seats{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.seat{min-height:65px}.stats{gap:6px}.stat{padding:10px}.stat strong{font-size:23px}}
+</style>
+</head>
+<body>
+<main>
+<header class="hero"><div><div class="eyebrow">ENGLISH PROGRAM · CLASSROOM TOOLS</div><h1>ระบบเลือกที่นั่งห้อง 3/EP</h1><p>3/EP Classroom Seat Booking</p></div><span class="tag" id="sessionStatus">กำลังเชื่อมต่อ…</span></header>
+<nav><button class="secondary" id="homeBtn">หน้าแรก / บัญชี</button><button class="secondary" id="seatsBtn">เลือกที่นั่ง</button><button class="secondary hidden" id="logoutBtn">ออกจากระบบ</button></nav>
+<section id="authPanel" class="panel narrow">
+<div class="eyebrow">ACCOUNT</div><h2 id="authTitle">สร้างบัญชี</h2><p class="muted">ใช้บัญชีนี้เพื่อจองได้หนึ่งที่นั่ง</p>
+<div class="field" id="nameField"><label for="fullName">ชื่อและนามสกุล</label><input id="fullName" autocomplete="name" maxlength="100" placeholder="ชื่อ นามสกุล"></div>
+<div class="field"><label for="email">อีเมล</label><input id="email" type="email" autocomplete="email" placeholder="name@example.com"></div>
+<div class="field"><label for="password">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label><input id="password" type="password" autocomplete="current-password" minlength="6" placeholder="รหัสผ่าน"></div>
+<button class="primary" id="authSubmit" style="width:100%">สร้างบัญชี</button>
+<div class="row" style="margin-top:12px"><span id="switchText" class="muted">มีบัญชีแล้ว?</span><button class="secondary" id="switchMode">เข้าสู่ระบบแทน</button></div>
+<div id="authMessage" class="notice">บัญชีจะจัดการด้วย Supabase Auth ไม่เก็บรหัสผ่านในหน้าเว็บ</div>
+</section>
+<section id="bookingPanel" class="panel hidden">
+<div class="row"><div><h2 style="margin:0">ผังที่นั่ง</h2><p class="muted" style="margin:5px 0 0">เลือกได้หนึ่งที่นั่งต่อบัญชี · ทั้งหมด 29 ที่นั่ง</p></div><button class="secondary" id="refreshBtn">รีเฟรชผัง</button></div>
+<div class="stats"><div class="stat free"><span>ที่นั่งว่าง</span><strong id="freeCount">—</strong></div><div class="stat booked"><span>จองแล้ว</span><strong id="bookedCount">—</strong></div><div class="stat"><span>ที่นั่งที่เลือก</span><strong id="selectedLabel">—</strong></div></div>
+<div id="seatGrid" class="seats"></div>
+<div class="notice" id="bookingMessage">เลือกที่นั่งว่าง แล้วกดยืนยันการจอง</div>
+<div class="row" style="margin-top:14px"><button class="primary" id="confirmBtn" disabled>ยืนยันการจอง</button><button class="danger hidden" id="cancelBtn">ยกเลิกการจองของฉัน</button></div>
+</section>
+<div class="footer">3/EP · Seat Booking · Supabase</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ====== กรอกข้อมูล Supabase 2 ค่าในส่วนนี้เท่านั้น ====== */
+const SUPABASE_URL = "PASTE_YOUR_SUPABASE_PROJECT_URL_HERE";
+const SUPABASE_PUBLISHABLE_KEY = "PASTE_YOUR_SUPABASE_PUBLISHABLE_KEY_HERE";
+/* ======================================================= */
+const CONFIGURED = !SUPABASE_URL.includes("PASTE_") && !SUPABASE_PUBLISHABLE_KEY.includes("PASTE_");
+const $ = id => document.getElementById(id);
+let supabaseClient = null, currentUser = null, authMode = "register", seats = [], selectedSeat = null, myBooking = null;
+
+function message(id, text, kind="") {
+  const el=$(id); el.textContent=text; el.className="notice"+(kind ? " "+kind : "");
+}
+function setMode(mode) {
+  authMode=mode;
+  $("authTitle").textContent=mode==="register"?"สร้างบัญชี":"เข้าสู่ระบบ";
+  $("authSubmit").textContent=mode==="register"?"สร้างบัญชี":"เข้าสู่ระบบ";
+  $("switchText").textContent=mode==="register"?"มีบัญชีแล้ว?":"ยังไม่มีบัญชี?";
+  $("switchMode").textContent=mode==="register"?"เข้าสู่ระบบแทน":"สมัครสมาชิก";
+  $("nameField").classList.toggle("hidden",mode!=="register");
+  $("password").autocomplete=mode==="register"?"new-password":"current-password";
+}
+function showAuth() {
+  $("authPanel").classList.toggle("hidden",!!currentUser);
+  $("bookingPanel").classList.toggle("hidden",!currentUser);
+  $("logoutBtn").classList.toggle("hidden",!currentUser);
+  if(currentUser) loadSeats();
+}
+function friendlyError(error) {
+  const m=(error && error.message)||"เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
+  if(m.includes("Invalid login credentials")) return "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
+  if(m.includes("Email not confirmed")) return "กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ (ตรวจกล่องจดหมาย)";
+  if(m.includes("already registered")) return "อีเมลนี้สมัครไว้แล้ว ให้ลองเข้าสู่ระบบ";
+  if(m.includes("Failed to fetch")) return "เชื่อมต่อ Supabase ไม่สำเร็จ ตรวจ Project URL และอินเทอร์เน็ต";
+  return m;
+}
+async function authSubmit() {
+  if(!CONFIGURED){message("authMessage","ยังไม่ได้ใส่ Supabase Project URL และ Publishable key ในโค้ด","error");return}
+  const email=$("email").value.trim(), password=$("password").value, fullName=$("fullName").value.trim();
+  if(!email || !password){message("authMessage","กรอกอีเมลและรหัสผ่านให้ครบ","error");return}
+  if(password.length<6){message("authMessage","รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร","error");return}
+  $("authSubmit").disabled=true;
+  try {
+    let result;
+    if(authMode==="register"){
+      if(!fullName){message("authMessage","กรอกชื่อและนามสกุลก่อนสมัคร","error");return}
+      result=await supabaseClient.auth.signUp({email,password,options:{data:{full_name:fullName}}});
+      if(result.error) throw result.error;
+      if(!result.data.session){
+        message("authMessage","สมัครแล้ว! หากระบบขอให้ยืนยันอีเมล ให้เปิดอีเมลยืนยันก่อน แล้วกลับมาเข้าสู่ระบบ","success");
+        setMode("login"); return;
+      }
+    } else {
+      result=await supabaseClient.auth.signInWithPassword({email,password});
+      if(result.error) throw result.error;
+    }
+    currentUser=result.data.user;
+    message("authMessage","เข้าสู่ระบบสำเร็จ","success");
+    showAuth();
+  } catch(e) { message("authMessage",friendlyError(e),"error"); }
+  finally { $("authSubmit").disabled=false; }
+}
+async function loadSeats() {
+  if(!currentUser || !supabaseClient) return;
+  $("refreshBtn").disabled=true;
+  try {
+    const [seatResult, bookingResult]=await Promise.all([
+      supabaseClient.from("ep_seats").select("seat_number,is_booked").order("seat_number"),
+      supabaseClient.from("ep_bookings").select("seat_number,created_at").eq("user_id",currentUser.id).maybeSingle()
+    ]);
+    if(seatResult.error) throw seatResult.error;
+    if(bookingResult.error) throw bookingResult.error;
+    seats=seatResult.data||[]; myBooking=bookingResult.data||null;
+    selectedSeat=null; renderSeats();
+    $("sessionStatus").textContent="เชื่อมต่อแล้ว";
+    message("bookingMessage",myBooking?`บัญชีนี้จองที่นั่งหมายเลข ${myBooking.seat_number} แล้ว`:"เลือกที่นั่งว่าง แล้วกดยืนยันการจอง",myBooking?"success":"");
+  } catch(e) {
+    message("bookingMessage","โหลดผังที่นั่งไม่ได้: "+friendlyError(e)+" · ตรวจว่ารันไฟล์ setup.sql ใน Supabase แล้ว","error");
+  } finally { $("refreshBtn").disabled=false; }
+}
+function renderSeats() {
+  const grid=$("seatGrid"); grid.replaceChildren();
+  for(let n=1;n<=29;n++){
+    const s=seats.find(x=>x.seat_number===n), booked=!s || s.is_booked;
+    const b=document.createElement("button");
+    b.className="seat"+(booked?" booked":selectedSeat===n?" selected":"");
+    b.disabled=booked||!!myBooking;
+    const number=document.createElement("span"); number.textContent="No. "+n;
+    const label=document.createElement("small"); label.textContent=booked?"จองแล้ว":selectedSeat===n?"กำลังเลือก":"ว่าง";
+    b.append(number,label);
+    b.addEventListener("click",()=>{selectedSeat=n;renderSeats()});
+    grid.append(b);
+  }
+  $("freeCount").textContent=seats.filter(s=>!s.is_booked).length;
+  $("bookedCount").textContent=seats.filter(s=>s.is_booked).length;
+  $("selectedLabel").textContent=selectedSeat?`No. ${selectedSeat}`:myBooking?`No. ${myBooking.seat_number}`:"—";
+  $("confirmBtn").disabled=!selectedSeat||!!myBooking;
+  $("cancelBtn").classList.toggle("hidden",!myBooking);
+}
+async function confirmBooking() {
+  if(!currentUser||!selectedSeat) return;
+  $("confirmBtn").disabled=true;
+  try {
+    const {error}=await supabaseClient.rpc("ep_book_seat",{p_seat_number:selectedSeat});
+    if(error) throw error;
+    message("bookingMessage",`จองที่นั่ง No. ${selectedSeat} สำเร็จ`,"success");
+    await loadSeats();
+  } catch(e) {
+    message("bookingMessage","จองไม่สำเร็จ: "+friendlyError(e)+" · หากที่นั่งถูกจองไปแล้ว ให้รีเฟรชผังและเลือกใหม่","error");
+    await loadSeats();
+  } finally { $("confirmBtn").disabled=!selectedSeat||!!myBooking; }
+}
+async function cancelBooking() {
+  if(!myBooking || !confirm("ต้องการยกเลิกการจองของบัญชีนี้หรือไม่?")) return;
+  $("cancelBtn").disabled=true;
+  try {
+    const {error}=await supabaseClient.rpc("ep_cancel_my_booking");
+    if(error) throw error;
+    myBooking=null;selectedSeat=null;
+    message("bookingMessage","ยกเลิกการจองแล้ว","success");
+    await loadSeats();
+  } catch(e) { message("bookingMessage","ยกเลิกไม่สำเร็จ: "+friendlyError(e),"error"); }
+  finally { $("cancelBtn").disabled=false; }
+}
+async function init() {
+  setMode("register");
+  if(!CONFIGURED){$("sessionStatus").textContent="รอตั้งค่า";message("authMessage","ขั้นแรกให้แทนที่ข้อความ PASTE_YOUR_SUPABASE_PROJECT_URL_HERE และ PASTE_YOUR_SUPABASE_PUBLISHABLE_KEY_HERE ด้วยค่าจาก Supabase Project Settings / API Keys","warn");return}
+  if(!window.supabase){message("authMessage","โหลดไลบรารี Supabase ไม่สำเร็จ ตรวจการเชื่อมต่ออินเทอร์เน็ต","error");return}
+  supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+  const {data,error}=await supabaseClient.auth.getSession();
+  if(error){message("authMessage",friendlyError(error),"error");return}
+  currentUser=data.session?.user||null;
+  supabaseClient.auth.onAuthStateChange((_event,session)=>{
+    currentUser=session?.user||null;
+    setTimeout(()=>showAuth(),0);
+  });
+  $("sessionStatus").textContent="พร้อมใช้งาน";
+  showAuth();
+}
+$("authSubmit").addEventListener("click",authSubmit);
+$("switchMode").addEventListener("click",()=>setMode(authMode==="register"?"login":"register"));
+$("homeBtn").addEventListener("click",()=>{if(currentUser){message("bookingMessage","บัญชีของคุณเข้าสู่ระบบแล้ว เลือกที่นั่งได้ด้านล่าง");$("bookingPanel").scrollIntoView({behavior:"smooth"})}else $("authPanel").scrollIntoView({behavior:"smooth"})});
+$("seatsBtn").addEventListener("click",()=>{if(!currentUser){message("authMessage","เข้าสู่ระบบก่อนจองที่นั่ง","warn");$("authPanel").scrollIntoView({behavior:"smooth"})}else $("bookingPanel").scrollIntoView({behavior:"smooth"})});
+$("logoutBtn").addEventListener("click",async()=>{const {error}=await supabaseClient.auth.signOut();if(error)message("bookingMessage",friendlyError(error),"error")});
+$("refreshBtn").addEventListener("click",loadSeats);
+$("confirmBtn").addEventListener("click",confirmBooking);
+$("cancelBtn").addEventListener("click",cancelBooking);
+init();
+</script>
+</body>
+</html>
